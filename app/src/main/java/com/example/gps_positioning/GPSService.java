@@ -22,6 +22,7 @@ public class GPSService extends Service implements IGPSInterface {
 
     private Double currentLat = 0.0;
     private Double currentLong = 0.0;
+    private Double currentDistance = 0.0;
 
     @Override
     public double getLatitude() {
@@ -64,10 +65,12 @@ public class GPSService extends Service implements IGPSInterface {
 
         currentLat = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER).getLatitude();
         currentLong = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER).getLongitude();
+        currentDistance = 0.0;
 
         locationListener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
+                currentDistance = currentDistance + calcDistance(location.getLatitude(), location.getLongitude(), currentLat, currentLong);
                 currentLat = location.getLatitude();
                 currentLong = location.getLongitude();
             }
@@ -102,8 +105,17 @@ public class GPSService extends Service implements IGPSInterface {
 
     }
 
-    private double calcDistance(double lastLat, double lastLng, double currentLat, double currentLng) {
-        return 0;
+    private static double calcDistance(double lastLat, double lastLng, double currentLat, double currentLng) {
+        double earthRadius = 6371000; //meters
+        double dLat = Math.toRadians(currentLat-lastLat);
+        double dLng = Math.toRadians(currentLng-lastLng);
+        double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(Math.toRadians(lastLat)) * Math.cos(Math.toRadians(currentLat)) *
+                        Math.sin(dLng/2) * Math.sin(dLng/2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        float dist = (float) (earthRadius * c);
+
+        return dist;
     }
 
 }
