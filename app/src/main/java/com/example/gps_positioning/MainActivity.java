@@ -2,12 +2,15 @@ package com.example.gps_positioning;
 
 import android.Manifest;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Looper;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -40,6 +43,9 @@ public class MainActivity extends AppCompatActivity {
     private Handler userInterfaceUpdateHandler;
 
     private Context context;
+
+    GPSService GPSService;
+    boolean isBound = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,14 +100,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void startGPS(View view) {
-        Intent i = new Intent(this, GPSService.class);
-        startService(i);
+        Intent intent = new Intent(this, GPSService.class);
+        bindService(intent, connection, Context.BIND_AUTO_CREATE);
         Toast.makeText(context, "GPS started", Toast.LENGTH_SHORT).show();
     }
 
     public void stopGPS(View view) {
-        Intent i = new Intent(this, GPSService.class);
-        stopService(i);
+        unbindService(connection);
+        isBound = false;
     }
 
     public void updateValues(View view) {
@@ -113,8 +119,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void refreshUI() {
-        latView.setText("Latitude: " + Double.toString(currentLat));
-        longView.setText("Longitude: " + Double.toString(currentLong));
+        if (isBound) {
+            latView.setText("Latitude: " + Double.toString(GPSService.getLatitude()));
+            longView.setText("Longitude: " + Double.toString(GPSService.getLongitude()));
+        }
         Toast.makeText(context, "Value written successfully", Toast.LENGTH_SHORT).show();
     }
 
@@ -128,6 +136,24 @@ public class MainActivity extends AppCompatActivity {
         Intent i = new Intent(this, GPSService.class);
         stopService(i);
     }
+
+    private ServiceConnection connection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            GPSService.LocalBinder binder = (GPSService.LocalBinder) service;
+            GPSService = binder.getService();
+            isBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            isBound = false;
+        }
+    };
+
 
     private boolean checkPermission() {
         int result = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);

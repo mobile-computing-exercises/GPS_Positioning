@@ -7,21 +7,54 @@ import android.content.Intent;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.util.Log;
 
-public class GPSService extends Service {
+public class GPSService extends Service implements IGPSInterface {
+
+    private final IBinder binder = new LocalBinder();
 
     private LocationListener locationListener;
     private LocationManager locationManager;
 
+    private Double currentLat = 0.0;
+    private Double currentLong = 0.0;
+
+    @Override
+    public double getLatitude() {
+        return currentLat;
+    }
+
+    @Override
+    public double getLongitude() {
+        return currentLong;
+    }
+
+    @Override
+    public double getDistance() {
+        return 0;
+    }
+
+    @Override
+    public double getAverageSpeed() {
+        return 0;
+    }
+
+    public class LocalBinder extends Binder {
+        GPSService getService() {
+            // Return this instance of LocalService so clients can call public methods
+            return GPSService.this;
+        }
+    }
 
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        return binder;
     }
+
 
     @SuppressLint("MissingPermission")
     @Override
@@ -29,16 +62,14 @@ public class GPSService extends Service {
         // Init managers
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
-        Log.i("GPS_SERVICE", "THE GPS SERVICE HAS STARTED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        currentLat = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER).getLatitude();
+        currentLong = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER).getLongitude();
 
         locationListener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
-                Intent i = new Intent("current_coordinates");
-                i.putExtra("latitude", location.getLatitude());
-                i.putExtra("longitude", location.getLongitude());
-                sendBroadcast(i);
-                Log.i("GPS_SERVICE", "BROADCASTED POSITION !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                currentLat = location.getLatitude();
+                currentLong = location.getLongitude();
             }
 
             @Override
@@ -69,6 +100,10 @@ public class GPSService extends Service {
             locationManager.removeUpdates(locationListener);
         }
 
+    }
+
+    private double calcDistance(double lastLat, double lastLng, double currentLat, double currentLng) {
+        return 0;
     }
 
 }
