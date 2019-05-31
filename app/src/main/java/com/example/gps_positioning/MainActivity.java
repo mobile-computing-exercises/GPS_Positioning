@@ -22,6 +22,9 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+
 public class MainActivity extends AppCompatActivity {
 
     private TextView latView;
@@ -46,6 +49,8 @@ public class MainActivity extends AppCompatActivity {
 
     GPSService GPSService;
     boolean isBound = false;
+
+    NumberFormat formatter = new DecimalFormat("#0.00");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -122,6 +127,8 @@ public class MainActivity extends AppCompatActivity {
         if (isBound) {
             latView.setText("Latitude: " + Double.toString(GPSService.getLatitude()));
             longView.setText("Longitude: " + Double.toString(GPSService.getLongitude()));
+            distView.setText("Distance: " + formatter.format(GPSService.getDistance()) + " m");
+            speedView.setText("Speed: " + formatter.format(GPSService.getAverageSpeed()) + " km/h");
         }
         Toast.makeText(context, "Value written successfully", Toast.LENGTH_SHORT).show();
     }
