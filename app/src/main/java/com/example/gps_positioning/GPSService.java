@@ -29,7 +29,7 @@ public class GPSService extends Service {
         // Init managers
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
-        Log.i("Service", "Started");
+        Log.i("GPS_SERVICE", "THE GPS SERVICE HAS STARTED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
         locationListener = new LocationListener() {
             @Override
@@ -38,6 +38,7 @@ public class GPSService extends Service {
                 i.putExtra("latitude", location.getLatitude());
                 i.putExtra("longitude", location.getLongitude());
                 sendBroadcast(i);
+                Log.i("GPS_SERVICE", "BROADCASTED POSITION !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             }
 
             @Override

@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -32,13 +34,20 @@ public class MainActivity extends AppCompatActivity {
 
     private BroadcastReceiver broadcastReceiver;
 
-    private String currentLat = "";
-    private String currentLong = "";
+    private double currentLat = 0.0f;
+    private double currentLong = 0.0f;
+
+    private Handler userInterfaceUpdateHandler;
+
+    private Context context;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        context = this;
+
+        userInterfaceUpdateHandler = new Handler(Looper.getMainLooper());
 
         if (Build.VERSION.SDK_INT >= 23) {
             if (!checkPermission()) {
@@ -47,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         initUI();
+
     }
 
     @Override
@@ -58,10 +68,10 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onReceive(Context context, Intent intent) {
                     if (intent.getExtras().get("latitude") != null) {
-                        currentLat = (String) intent.getExtras().get("latitude");
+                        currentLat = (Double) intent.getExtras().get("latitude");
                     }
                     if (intent.getExtras().get("longitude") != null) {
-                        currentLong = (String) intent.getExtras().get("longitude");
+                        currentLong = (Double) intent.getExtras().get("longitude");
                     }
                 }
             };
@@ -86,6 +96,7 @@ public class MainActivity extends AppCompatActivity {
     public void startGPS(View view) {
         Intent i = new Intent(this, GPSService.class);
         startService(i);
+        Toast.makeText(context, "GPS started", Toast.LENGTH_SHORT).show();
     }
 
     public void stopGPS(View view) {
@@ -94,8 +105,28 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void updateValues(View view) {
-        latView.setText(currentLat);
-        longView.setText(currentLong);
+        userInterfaceUpdateHandler.post(new Runnable() {
+            public void run() {
+                refreshUI();
+            }
+        });
+    }
+
+    public void refreshUI() {
+        latView.setText("Latitude: " + Double.toString(currentLat));
+        longView.setText("Longitude: " + Double.toString(currentLong));
+        Toast.makeText(context, "Value written successfully", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (broadcastReceiver != null) {
+            unregisterReceiver(broadcastReceiver);
+        }
+
+        Intent i = new Intent(this, GPSService.class);
+        stopService(i);
     }
 
     private boolean checkPermission() {
@@ -122,8 +153,6 @@ public class MainActivity extends AppCompatActivity {
             case PERMISSION_REQUEST_CODE:
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     Log.e("value", "Permission Granted");
-                    Intent i = new Intent(this, GPSService.class);
-                    startService(i);
                 } else {
                     Log.e("value", "Permission Denied");
                 }
