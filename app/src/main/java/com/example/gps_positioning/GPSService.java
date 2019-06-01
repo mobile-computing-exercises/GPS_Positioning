@@ -1,7 +1,6 @@
 package com.example.gps_positioning;
 
 import android.annotation.SuppressLint;
-import android.app.DownloadManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -13,31 +12,36 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.IBinder;
 import android.provider.Settings;
-import android.util.Log;
-import android.widget.Toast;
+
+import com.example.gps_positioning.gpx.GPX;
+import com.example.gps_positioning.gpx.TrackPoint;
+
+import org.simpleframework.xml.Serializer;
+import org.simpleframework.xml.core.Persister;
 
 import java.io.File;
+import java.io.StringWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Calendar;
 
 public class GPSService extends Service implements IGPSInterface {
 
+    // Binder
     private final IBinder binder = new LocalBinder();
-
+    private Context context;
+    // Location
     private LocationListener locationListener;
     private LocationManager locationManager;
-
+    // Location values
     private Double currentLat = 0.0;
     private Double currentLong = 0.0;
     private Double currentDistance = 0.0;
     private Double avgSpeed = 0.0;
-
+    // Starttime of Service
     private long startTime;
-
+    // Savefile of coordinates
     private File saveFile;
-
-    private Context context;
 
     @Override
     public double getLatitude() {
@@ -75,16 +79,17 @@ public class GPSService extends Service implements IGPSInterface {
     @SuppressLint("MissingPermission")
     @Override
     public void onCreate() {
-        // Init managers
+        // Init manager and context
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-
         context = this;
 
+        // Set initial values
         currentLat = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER).getLatitude();
         currentLong = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER).getLongitude();
         currentDistance = 0.0;
         startTime = Calendar.getInstance().getTimeInMillis();
-        saveFile = getPublicDownloadStorageDir();
+        // Init savefile (create and fill)
+        saveFile = initSaveFile();
 
         locationListener = new LocationListener() {
             @Override
@@ -93,6 +98,7 @@ public class GPSService extends Service implements IGPSInterface {
                 currentLat = location.getLatitude();
                 currentLong = location.getLongitude();
                 avgSpeed = calcSpeed();
+                updateFile(saveFile, coordinatesToTrackPoint(currentLat, currentLong), readGpxFromFile(saveFile));
             }
 
             @Override
@@ -125,6 +131,15 @@ public class GPSService extends Service implements IGPSInterface {
 
     }
 
+    /**
+     * This method calculates the distance of two geographical poinst in meters
+     *
+     * @param lastLat
+     * @param lastLng
+     * @param currentLat
+     * @param currentLng
+     * @return distanceInMeters
+     */
     private static double calcDistance(double lastLat, double lastLng, double currentLat, double currentLng) {
         double earthRadius = 6371000; //meters
         double dLat = Math.toRadians(currentLat-lastLat);
@@ -138,6 +153,10 @@ public class GPSService extends Service implements IGPSInterface {
         return dist;
     }
 
+    /**
+     * This method calculates the average speed of the user
+     * @return speed
+     */
     private double calcSpeed(){
         long currentTime = Calendar.getInstance().getTimeInMillis();
         Long l = currentTime - startTime;
@@ -153,7 +172,12 @@ public class GPSService extends Service implements IGPSInterface {
         return false;
     }
 
-    public File getPublicDownloadStorageDir() {
+    /**
+     * This method initialises the gpx file that is saved to the external storage.
+     * When initialising, the old .gpx will be overwritten.
+     * @return
+     */
+    public File initSaveFile() {
         File gpxFile = null;
         try {
             File root = new File(Environment.getExternalStorageDirectory(), "Notes");
@@ -161,14 +185,97 @@ public class GPSService extends Service implements IGPSInterface {
                 root.mkdirs();
             }
             gpxFile = new File(root, "Route.gpx");
-            FileWriter writer = new FileWriter(gpxFile);
-            writer.append("Textx");
+            // Old file will be overwritten
+            FileWriter writer = new FileWriter(gpxFile, false);
+            // Initialise with initial content
+            writer.append(pojoToXml(new GPX()));
             writer.flush();
             writer.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
         return gpxFile;
+    }
+
+    /**
+     * This method uses the SimpleFramework to create an XML-String from a POJO.
+     * String will be returned and can be saved to a file for example.
+     *
+     * @return xml
+     */
+    private String pojoToXml(GPX gpxContent) {
+        StringWriter writer = new StringWriter();
+        Serializer serializer = new Persister();
+
+        // Try to map pojo to xml
+        try {
+            serializer.write(gpxContent, writer);
+            String xml = writer.getBuffer().toString();
+            return xml;
+        } catch (Exception e) {
+            // If error occurs don't return empty string
+            return "";
+        }
+    }
+
+    /**
+     * This method updates an gpx object with a new track-point.
+     *
+     * @param gpxContent
+     * @param newPoint
+     * @return
+     */
+    private GPX updatePojo(GPX gpxContent, TrackPoint newPoint) {
+        gpxContent.getTrack().getSegment().getPoints().add(newPoint);
+        return gpxContent;
+    }
+
+    /**
+     * This method updates the gpx File by replacing it with updated values.
+     *
+     * @param gpxFile
+     * @param point
+     * @param gpxContent
+     */
+    private void updateFile(File gpxFile, TrackPoint point, GPX gpxContent) {
+        try {
+            FileWriter writer = new FileWriter(gpxFile, false);
+            // Initialise with initial content
+            writer.append(pojoToXml(updatePojo(gpxContent, point)));
+            writer.flush();
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * This method uses the SimpleFramework to map an XML/GPX-File to a POJO.
+     *
+     * @param file
+     * @return pojo
+     */
+    private GPX readGpxFromFile(File file) {
+        try {
+            Serializer serializer = new Persister();
+            return serializer.read(GPX.class, file);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * This method creates a TrackPoint from new coordinates.
+     *
+     * @param lat
+     * @param lng
+     * @return newPoint
+     */
+    private TrackPoint coordinatesToTrackPoint(double lat, double lng) {
+        TrackPoint newPoint = new TrackPoint();
+        newPoint.setLat(lat);
+        newPoint.setLng(lng);
+        return newPoint;
     }
 
 }
