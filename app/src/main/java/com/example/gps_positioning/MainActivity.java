@@ -27,94 +27,112 @@ import java.text.NumberFormat;
 
 public class MainActivity extends AppCompatActivity {
 
+    // Declare GUI-Elements
     private TextView latView;
     private TextView longView;
     private TextView distView;
     private TextView speedView;
-
     private Button btnStart;
     private Button btnStop;
     private Button btnUpdate;
 
+    // Permission-Code
     private static final int PERMISSION_REQUEST_CODE = 1;
 
-    private BroadcastReceiver broadcastReceiver;
-
-    private double currentLat = 0.0f;
-    private double currentLong = 0.0f;
-
+    // Declaration of main thread and context
     private Handler userInterfaceUpdateHandler;
-
     private Context context;
 
+    // Attributes needed for RPC
     GPSService GPSService;
     boolean isBound = false;
 
+    // Formatter for trimming doubles
     NumberFormat formatter = new DecimalFormat("#0.00");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        // Init context and main thread
         context = this;
-
         userInterfaceUpdateHandler = new Handler(Looper.getMainLooper());
 
+        // Check permissions
         if (Build.VERSION.SDK_INT >= 23) {
             if (!checkPermission()) {
+                // Request permissions if necessary
                 requestPermission();
             }
         }
-
+        // Initialise the GUI
         initUI();
-
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-
-        if (broadcastReceiver == null) {
-            broadcastReceiver = new BroadcastReceiver() {
-                @Override
-                public void onReceive(Context context, Intent intent) {
-                    if (intent.getExtras().get("latitude") != null) {
-                        currentLat = (Double) intent.getExtras().get("latitude");
-                    }
-                    if (intent.getExtras().get("longitude") != null) {
-                        currentLong = (Double) intent.getExtras().get("longitude");
-                    }
-                }
-            };
-        }
-
-        // Register receiver for all Intents
-        registerReceiver(broadcastReceiver, new IntentFilter("current_coordinates"));
-
+        // Refresh GUI
+        userInterfaceUpdateHandler.post(new Runnable() {
+            public void run() {
+                refreshUI();
+            }
+        });
     }
 
+    /**
+     * This method initialises the GUI
+     */
     private void initUI() {
         latView = findViewById(R.id.latView);
         longView = findViewById(R.id.longView);
         distView = findViewById(R.id.distView);
         speedView = findViewById(R.id.speedView);
-
         btnStart = findViewById(R.id.btnStart);
         btnStop = findViewById(R.id.btnStop);
         btnUpdate = findViewById(R.id.btnUpdate);
+        // Enable/Disable button
+        btnStart.setEnabled(true);
+        btnUpdate.setEnabled(false);
+        btnStop.setEnabled(false);
     }
 
+    /**
+     *  This method binds the activity to the service
+     *
+     * @param view
+     */
     public void startGPS(View view) {
+        // Bind to service
         Intent intent = new Intent(this, GPSService.class);
         bindService(intent, connection, Context.BIND_AUTO_CREATE);
+        // Enable/Disable button
+        btnStart.setEnabled(false);
+        btnUpdate.setEnabled(true);
+        btnStop.setEnabled(true);
         Toast.makeText(context, "GPS started", Toast.LENGTH_SHORT).show();
     }
 
+    /**
+     * This method unbinds the activity from the service.
+     *
+     * @param view
+     */
     public void stopGPS(View view) {
+        // Unbind from service
         unbindService(connection);
         isBound = false;
+        // Enable/Disable button
+        btnStart.setEnabled(true);
+        btnUpdate.setEnabled(false);
+        btnStop.setEnabled(false);
+        Toast.makeText(context, "GPS stopped", Toast.LENGTH_SHORT).show();
     }
 
+    /**
+     * This method uses the main thread to update the GUI
+     * @param view
+     */
     public void updateValues(View view) {
         userInterfaceUpdateHandler.post(new Runnable() {
             public void run() {
@@ -123,6 +141,9 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * This method refreshes the GUI
+     */
     public void refreshUI() {
         if (isBound) {
             latView.setText("Latitude: " + Double.toString(GPSService.getLatitude()));
@@ -130,16 +151,11 @@ public class MainActivity extends AppCompatActivity {
             distView.setText("Distance: " + formatter.format(GPSService.getDistance()) + " m");
             speedView.setText("Speed: " + formatter.format(GPSService.getAverageSpeed()) + " km/h");
         }
-        Toast.makeText(context, "Value written successfully", Toast.LENGTH_SHORT).show();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (broadcastReceiver != null) {
-            unregisterReceiver(broadcastReceiver);
-        }
-
         Intent i = new Intent(this, GPSService.class);
         stopService(i);
     }
@@ -161,7 +177,10 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-
+    /**
+     *  This method checks if the app has the needed permissions
+     * @return hasPermission
+     */
     private boolean checkPermission() {
         int result = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
         if (result == PackageManager.PERMISSION_GRANTED) {
@@ -171,8 +190,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     *  This method requests needed permissions for GPS and Storage
+     */
     private void requestPermission() {
-
         if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.INTERNET)) {
             Toast.makeText(this, "This app requires permission to access your GPS data.", Toast.LENGTH_LONG).show();
         } else {
