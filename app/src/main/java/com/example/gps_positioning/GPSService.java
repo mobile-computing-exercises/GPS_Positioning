@@ -180,7 +180,7 @@ public class GPSService extends Service implements IGPSInterface {
     public File initSaveFile() {
         File gpxFile = null;
         try {
-            File root = new File(Environment.getExternalStorageDirectory(), "Notes");
+            File root = new File(Environment.getExternalStorageDirectory(), "MobileComputing");
             if (!root.exists()) {
                 root.mkdirs();
             }
