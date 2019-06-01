@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private Button btnStart;
     private Button btnStop;
     private Button btnUpdate;
+    private Button btnExit;
 
     // Permission-Code
     private static final int PERMISSION_REQUEST_CODE = 1;
@@ -91,10 +92,12 @@ public class MainActivity extends AppCompatActivity {
         btnStart = findViewById(R.id.btnStart);
         btnStop = findViewById(R.id.btnStop);
         btnUpdate = findViewById(R.id.btnUpdate);
+        btnExit = findViewById(R.id.btnExit);
         // Enable/Disable button
         btnStart.setEnabled(true);
         btnUpdate.setEnabled(false);
         btnStop.setEnabled(false);
+        btnExit.setEnabled(true);
     }
 
     /**
@@ -139,6 +142,15 @@ public class MainActivity extends AppCompatActivity {
                 refreshUI();
             }
         });
+    }
+
+    /**
+     * This method closes the activity and therefor also the service.
+     *
+     * @param view
+     */
+    public void exitApp(View view) {
+        finish();
     }
 
     /**

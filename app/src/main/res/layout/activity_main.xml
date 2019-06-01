@@ -112,6 +112,21 @@
 
         </TableRow>
 
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <Button
+                android:id="@+id/btnExit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:onClick="exitApp"
+                android:text="Exit"
+                tools:layout_editor_absoluteX="27dp"
+                tools:layout_editor_absoluteY="109dp" />
+
+        </TableRow>
+
 
     </TableLayout>
 
