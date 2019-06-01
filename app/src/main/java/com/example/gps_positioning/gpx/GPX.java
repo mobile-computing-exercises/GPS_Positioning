@@ -11,7 +11,7 @@ public class GPX {
     public double version = 1.1;
     @Attribute(name = "creator", required = false)
     public String creator = "GPSService";
-    @Element(name = "", required = false)
+    @Element(name = "trk", required = false)
     public Track track = new Track();
 
     public double getVersion() {
